@@ -1,5 +1,6 @@
 Instructions - 
-Note - You might find this file is stored in GitHub and Im working in GitHub but NO! I'm using GitHub as a storage just to store these files. I'm actually using Gitlab and entire framework is in gitlab only. PLEASE DO NOT SUGGEST ANYTHING CONSIDERING I'M USING GITHUB. THERE IS NO CONNECTION IN GITHUB AND MY FRAMEWORK. GITHUB IS USED ONLY AS A STORAGE FOR THESE FILES SO YOU CAN READ IT. Do not suggest anything for GitHub.  
+
+Note - You might find these files stored in GitHub and Im working in GitHub but NO! I'm using GitHub as a storage just to store these files. I'm actually using Gitlab and entire framework is in gitlab only. PLEASE DO NOT SUGGEST ANYTHING CONSIDERING I'M USING GITHUB. THERE IS NO CONNECTION IN GITHUB AND MY FRAMEWORK. GITHUB IS USED ONLY AS A STORAGE FOR THESE FILES SO YOU CAN READ IT. Do not suggest anything for GitHub.  
 
 Plan - We want to create a fully automated testing framework for new type of testing - "Component Based Testing" custom designed for Essent. Our goal is to define a framework which will automate 100% of testing lifecycle, only test script creation and maintenance will be taken care by human testers (due to it's human thinking and logic) 
 Basic expectations in framework - 
