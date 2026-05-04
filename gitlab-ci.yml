@@ -1,0 +1,308 @@
+#Flags set in CI/CD Variables:
+#RUN_API_TESTS   = "true" or "false"
+#RUN_TOSCA_TESTS = "true" or "false"
+
+variables:
+  # ── Shared config across both stages ──────────────────────────────────────────
+  GITLAB_URL: "https://gitlab.essent.nl"
+  FILE_REF:   "main"
+
+  # ── TOSCA-only script paths (downloaded from SharedResources) ──
+  EXTRACT_ID_SCRIPT: "scripts/extract_execution_id.sh"
+  RENAME_SCRIPT:     "scripts/rename_artifacts.sh"
+
+  # ── New Relic script path (downloaded from SharedResources) ──
+  NEWRELIC_SCRIPT:   "scripts/push_to_newrelic.sh"
+
+  # ── Note ───────────────────────────────────────────────────
+  # The following variables are declared at ComponentTesting GROUP level and inherited everywhere:
+  # tosca_certificate     → QuoVadis certificate filename (for TOSCA server SSL)
+  # newrelic_certificate  → EON Internal Root CA G1.crt (for Zscaler proxy SSL)
+  # NEW_RELIC_LICENSE_KEY → Ingest License key (Masked)
+  # NEW_RELIC_ACCOUNT_ID  → 7 digit New Relic account ID
+  # SHARED_PROJECT_PATH, ClientId, ClientSecret, ServerUrl, COLLECTION_FILE, DOWNLOAD_SCRIPT
+  #
+  # The following variables are declared at Component level:
+  # TOSCA stage → DOMAIN_ID, COMPONENT_NAME
+  # API stage   → DOMAIN_ID, COMPONENT_NAME + component-specific vars (see API_REQUIRED_VARS below)
+
+
+stages:
+  - api_tests
+  - tosca_tests
+
+# STAGE 1 — API Tests (api_tests.json inside Component) <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+api_test_cases:
+  stage: api_tests
+  image:
+    name: node:24-slim
+  allow_failure: true   # This will continue to stage 2 even if stage 1 is failed - pipeline shows "passed with warnings"
+
+  tags:
+    - small
+
+  variables: #these below 2 variables are meant to be changed as per the component
+    API_COLLECTION_FILE: "api_tests.json"
+    API_REQUIRED_VARS:   "SystemUsername SystemPassword" #change these variables with new, separate by 1 single space, can enter multiple
+
+  # RUN_API_TESTS is read from GitLab UI variables — rules:if can see it correctly
+  rules:
+    - if: $RUN_API_TESTS == "true" && $CI_PIPELINE_SOURCE == "schedule"
+    - if: $RUN_API_TESTS == "true" && $CI_PIPELINE_SOURCE == "manual"
+
+  before_script:
+    #----------------------------------Install required dependencies-----------------------------------------
+    - apt-get update && apt-get install -y curl jq ca-certificates
+    - npm install -g newman@latest newman-reporter-htmlextra
+
+    #----------------------------------Patch Newman's object-hash to handle async functions------------------
+    #Newman crashes with "Unknown object type asyncfunction" when hashing
+    #Node.js HTTP response objects. Patches the throw to a safe return
+    #so unknown types are silently skipped instead of crashing.
+    # - |
+    #   HASH_FILE=$(find /usr/local/lib/node_modules/newman -name "index.js" -path "*/object-hash/*" -not -path "*/test/*" | head -1)
+    #   echo "Patching object-hash: $HASH_FILE"
+    #   sed -i "s/throw new Error('Unknown object type/return; \/\/ patched: unknown type ignored/" "$HASH_FILE"
+    #   echo "Patch applied successfully."
+
+    #----------------------------------Install EON Zscaler root certificate (for New Relic push)------------
+    #Required for corporate Zscaler proxy SSL inspection when pushing data to New Relic
+    - |
+      echo "Downloading and installing EON Internal Root CA certificate..."
+      ENCODED_PATH=$(echo "$SHARED_PROJECT_PATH" | sed 's/\//%2F/g')
+      ENCODED_FILE=$(echo "$newrelic_certificate" | sed 's/\//%2F/g')
+      CERT_FILENAME=$(basename "$newrelic_certificate")
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        -sL "${GITLAB_URL}/api/v4/projects/${ENCODED_PATH}/repository/files/${ENCODED_FILE}/raw?ref=${FILE_REF}" \
+        -o "$CERT_FILENAME"
+      [ ! -s "$CERT_FILENAME" ] && echo "ERROR: EON Root CA certificate download failed!" && exit 1
+      cp "$CERT_FILENAME" /usr/local/share/ca-certificates/eon-root-ca.crt
+      update-ca-certificates
+      export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      echo "EON Internal Root CA certificate installed successfully."
+
+    #----------------------------------Download push_to_newrelic.sh from SharedResources--------------------
+    - |
+      echo "Downloading New Relic push script from SharedResources..."
+      ENCODED_PATH=$(echo "$SHARED_PROJECT_PATH" | sed 's/\//%2F/g')
+      ENCODED_FILE=$(echo "$NEWRELIC_SCRIPT" | sed 's/\//%2F/g')
+      FILENAME=$(basename "$NEWRELIC_SCRIPT")
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        -sL "${GITLAB_URL}/api/v4/projects/${ENCODED_PATH}/repository/files/${ENCODED_FILE}/raw?ref=${FILE_REF}" \
+        -o "$FILENAME"
+      [ ! -s "$FILENAME" ] && echo "ERROR: $FILENAME download failed or is empty!" && exit 1
+      sed -i 's/\r$//' "$FILENAME" && chmod +x "$FILENAME"
+      echo "OK: $FILENAME downloaded and ready."
+
+  script:
+    #----------------------------------Validate all required variables---------------------------------------
+    #DOMAIN_ID and COMPONENT_NAME are always required (for artifact naming)
+    #API_REQUIRED_VARS are component-specific (defined in variables above)
+    - |
+      echo "Validating required variables for API tests..."
+      for var in DOMAIN_ID COMPONENT_NAME NEW_RELIC_LICENSE_KEY NEW_RELIC_ACCOUNT_ID $API_REQUIRED_VARS; do
+        [ -z "$(eval echo \$$var)" ] && echo "ERROR: Variable '$var' is not set!" && exit 1
+      done
+      echo "All required variables are set."
+
+    #----------------------------------Verify collection file exists in component workspace------------------
+    - |
+      if [ ! -f "$API_COLLECTION_FILE" ]; then
+        echo "ERROR: $API_COLLECTION_FILE not found in the component directory!"
+        exit 1
+      fi
+      echo "$API_COLLECTION_FILE found. Proceeding..."
+
+    #----------------------------------Dynamically build Newman --env-var flags-----------------------------
+    - |
+      NEWMAN_ENV_ARGS=""
+      for var in $API_REQUIRED_VARS; do
+        NEWMAN_ENV_ARGS="$NEWMAN_ENV_ARGS --env-var $var=$(eval echo \$$var)"
+      done
+      echo "Newman env-var flags: $NEWMAN_ENV_ARGS"
+
+    #----------------------------------Run Newman, rename artifacts, then exit with Newman's code-----------
+    # All in ONE block so NEWMAN_EXIT_CODE survives across all steps.
+    # set +e prevents Newman test failures from killing the script early,
+    # ensuring rename always runs and artifacts are always uploaded.
+    - |
+      export HTTP_PROXY="http://eon-proxy.cicd.app.essent.nl:3128"
+      export HTTPS_PROXY="http://eon-proxy.cicd.app.essent.nl:3128"
+      export NO_PROXY="*.apps.eon.com,*.rise.apps.eon.com,localhost,127.0.0.1"
+
+      set +e   # disable exit-on-error so Newman failure doesn't kill the script
+      newman run "$API_COLLECTION_FILE" \
+        $NEWMAN_ENV_ARGS \
+        --reporters cli,htmlextra,json \
+        --reporter-htmlextra-export newman-report.html \
+        --reporter-json-export newman-results.json \
+        --insecure
+      NEWMAN_EXIT_CODE=$?   #capture exit code immediately
+      set -e   #re-enable exit-on-error
+
+      unset HTTP_PROXY HTTPS_PROXY
+
+      if [ $NEWMAN_EXIT_CODE -ne 0 ]; then
+        echo "WARNING: Newman exited with code $NEWMAN_EXIT_CODE — test failures detected. Collecting artifacts before exit..."
+      fi
+
+      #----------------------------------Rename all artifacts (always runs, even on Newman failure)---------
+      ARTIFACT_PREFIX="${DOMAIN_ID}_${COMPONENT_NAME}_api"
+      echo "Renaming artifacts with prefix: ${ARTIFACT_PREFIX}"
+
+      RENAMED_COUNT=0
+      if [ -f newman-report.html ]; then
+        mv newman-report.html "${ARTIFACT_PREFIX}_newman-report.html"
+        echo "Renamed: newman-report.html → ${ARTIFACT_PREFIX}_newman-report.html"
+        RENAMED_COUNT=$((RENAMED_COUNT + 1))
+      fi
+      if [ -f newman-results.json ]; then
+        mv newman-results.json "${ARTIFACT_PREFIX}_newman-results.json"
+        echo "Renamed: newman-results.json → ${ARTIFACT_PREFIX}_newman-results.json"
+        RENAMED_COUNT=$((RENAMED_COUNT + 1))
+      fi
+
+      [ $RENAMED_COUNT -eq 0 ] && echo "WARNING: No artifact files found to rename!" && exit 1
+      echo "Successfully renamed $RENAMED_COUNT artifact(s)."
+
+      #Exit with Newman's original code so GitLab marks job correctly
+      #allow_failure: true means pipeline stays green, but job shows as orange/failed
+      if [ $NEWMAN_EXIT_CODE -ne 0 ]; then
+        echo "Exiting with Newman's failure code: $NEWMAN_EXIT_CODE"
+        exit $NEWMAN_EXIT_CODE
+      fi
+
+    #----------------------------------Push API results to New Relic-----------------------------------------
+    - |
+      echo "Pushing API test results to New Relic..."
+      unset HTTP_PROXY HTTPS_PROXY NO_PROXY
+      ./push_to_newrelic.sh API
+
+#--------------------------------------------------------------------------------------------------------------------------------
+  artifacts:
+    when: always
+    paths:
+      - "*_newman-report.html"
+      - "*_newman-results.json"
+    expire_in: 30 days
+
+
+
+#############################################################################################################
+
+# STAGE 2 — TOSCA Tests (TOSCA_API_Collection.json from SharedResources)
+
+tosca_api_collection:
+  stage: tosca_tests
+  image:
+    name: node:24-slim
+
+  tags:
+    - small
+
+  rules:
+    - if: $RUN_TOSCA_TESTS == "true" && $CI_PIPELINE_SOURCE == "schedule"
+    - if: $RUN_TOSCA_TESTS == "true" && $CI_PIPELINE_SOURCE == "manual"
+
+  before_script:
+
+    #----------------------------------Install required dependencies-----------------------------------------
+    - apt-get update && apt-get install -y curl jq ca-certificates
+    - npm install -g newman newman-reporter-htmlextra
+
+    #----------------------------------Download all required files from SharedResources----------------------
+    - |
+      echo "Downloading required files from SharedResources..."
+      ENCODED_PATH=$(echo "$SHARED_PROJECT_PATH" | sed 's/\//%2F/g')
+
+      for FILE in "$tosca_certificate" "$COLLECTION_FILE" "$DOWNLOAD_SCRIPT" "$EXTRACT_ID_SCRIPT" "$RENAME_SCRIPT" "$NEWRELIC_SCRIPT"; do
+        FILENAME=$(basename "$FILE")
+        ENCODED_FILE=$(echo "$FILE" | sed 's/\//%2F/g')
+        echo "Downloading: $FILENAME"
+        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          -sL "${GITLAB_URL}/api/v4/projects/${ENCODED_PATH}/repository/files/${ENCODED_FILE}/raw?ref=${FILE_REF}" \
+          -o "$FILENAME"
+        [ ! -s "$FILENAME" ] && echo "ERROR: $FILENAME download failed or is empty!" && exit 1
+        echo "OK: $FILENAME downloaded."
+      done
+
+      #Fix Windows line endings and make scripts executable
+      sed -i 's/\r$//' *.sh && chmod +x *.sh
+      echo "All files downloaded successfully."
+
+    #----------------------------------Install TOSCA server SSL certificate----------------------------------
+    - |
+      CERT_FILENAME=$(basename "$tosca_certificate")
+      echo "Installing certificate: $CERT_FILENAME"
+      cp "$CERT_FILENAME" /usr/local/share/ca-certificates/quovadis-ca.crt
+      update-ca-certificates
+      export NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      echo "Certificate installed successfully."
+
+
+#--------------------------------------------------------------------------------------------------------------------------------
+
+  script:
+
+    #----------------------------------Validate required TOSCA variables--------------------------------------
+    - |
+      echo "Validating required variables for TOSCA tests..."
+      for var in DOMAIN_ID COMPONENT_NAME ClientId ClientSecret ServerUrl SHARED_PROJECT_PATH tosca_certificate COLLECTION_FILE DOWNLOAD_SCRIPT NEW_RELIC_LICENSE_KEY NEW_RELIC_ACCOUNT_ID; do
+        [ -z "$(eval echo \$$var)" ] && echo "ERROR: Variable '$var' is not set!" && exit 1
+      done
+      echo "All required variables are set."
+
+    #----------------------------------Run Newman with TOSCA API Collection------------------------------------
+    - |
+      COLLECTION_FILENAME=$(basename "$COLLECTION_FILE")
+      echo "Running Newman with TOSCA API Collection: $COLLECTION_FILENAME"
+
+      export HTTP_PROXY="http://eon-proxy.cicd.app.essent.nl:3128"
+      export HTTPS_PROXY="http://eon-proxy.cicd.app.essent.nl:3128"
+
+      newman run "$COLLECTION_FILENAME" \
+        --env-var "ClientId=$ClientId" \
+        --env-var "ClientSecret=$ClientSecret" \
+        --env-var "ServerUrl=$ServerUrl" \
+        --env-var "eventId=$DOMAIN_ID" \
+        --reporters cli,htmlextra,json \
+        --reporter-htmlextra-export newman-report.html \
+        --reporter-json-export newman-results.json \
+        --insecure
+
+      unset HTTP_PROXY HTTPS_PROXY
+
+    #----------------------------------Extract Execution ID from Newman results----------------------------------
+    - ./extract_execution_id.sh
+    - source execution.env && export EXECUTION_ID DOMAIN_ID COMPONENT_NAME
+
+    #----------------------------------Download test execution results from TOSCA server-------------------------
+    - |
+      echo "Downloading TOSCA execution results..."
+
+      export HTTP_PROXY="http://eon-proxy.cicd.app.essent.nl:3128"
+      export HTTPS_PROXY="http://eon-proxy.cicd.app.essent.nl:3128"
+
+      ./download_results.sh
+
+      unset HTTP_PROXY HTTPS_PROXY
+
+    #----------------------------------Rename all artifacts------------------------------------------------------
+    - ./rename_artifacts.sh
+
+    #----------------------------------Push TOSCA results to New Relic-------------------------------------------
+    - |
+      echo "Pushing API test results to New Relic..."
+      unset HTTP_PROXY HTTPS_PROXY NO_PROXY
+      ./push_to_newrelic.sh TOSCA
+
+
+#--------------------------------------------------------------------------------------------------------------------------------
+  artifacts:
+    when: always
+    paths:
+      - "*_newman-report.html"
+      - "*_result.xml"
+      - "*_newman-results.json"
+    expire_in: 30 days

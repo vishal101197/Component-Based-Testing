@@ -1,0 +1,391 @@
+{
+	"info": {
+		"_postman_id": "9f8a4d22-61ac-4140-afb3-31e67b1dd39a",
+		"name": "Collection",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "49230320",
+		"_collection_link": "https://vishal-kokate-4765052.postman.co/workspace/bdbf458c-6b00-4c70-8736-ac71df089929/collection/49230320-9f8a4d22-61ac-4140-afb3-31e67b1dd39a?action=share&source=collection_link&creator=49230320"
+	},
+	"item": [
+		{
+			"name": "Pre Execution",
+			"item": [
+				{
+					"name": "Get token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"let jsonData = pm.response.json();\r",
+									"pm.collectionVariables.set(\"AccessToken\", jsonData.access_token);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "grant_type",
+									"value": "client_credentials",
+									"type": "text"
+								},
+								{
+									"key": "client_id",
+									"value": "{{ClientId}}",
+									"type": "text"
+								},
+								{
+									"key": "client_secret",
+									"value": "{{ClientSecret}}",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{ServerUrl}}/tua/connect/token",
+							"host": [
+								"{{ServerUrl}}"
+							],
+							"path": [
+								"tua",
+								"connect",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Execute",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();\r",
+									"pm.collectionVariables.set(\"ExecutionId\", jsonData.ExecutionId);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{AccessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "X-Tricentis",
+								"value": "OK",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"projectName\": \"EssentCBT\",\r\n  \"executionEnvironment\": \"Dex\",\r\n  \"events\": [\r\n    {\r\n      \"eventId\": \"{{eventId}}\"\r\n    }\r\n  ],\r\n  \"importResult\": true,\r\n  \"creator\": \"Postman\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{ServerUrl}}/automationobjectservice/api/Execution/enqueue",
+							"host": [
+								"{{ServerUrl}}"
+							],
+							"path": [
+								"automationobjectservice",
+								"api",
+								"Execution",
+								"enqueue"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Status",
+			"item": [
+				{
+					"name": "Check status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// === Check status ===",
+									"console.clear();",
+									"console.log(\"=== Check status ===\");",
+									"",
+									"let res;",
+									"try {",
+									"  res = pm.response.json();",
+									"} catch (e) {",
+									"  pm.test(\"Response is JSON\", function(){ pm.expect.fail(\"Non-JSON response\"); });",
+									"  postman.setNextRequest(null);",
+									"  return;",
+									"}",
+									"",
+									"// Normalize status from various fields",
+									"let rawStatus = (res.Status || res.status || res.state || res.State || \"\").toString();",
+									"let status = rawStatus.trim().toUpperCase();",
+									"console.log(\"Current status:\", status || \"<empty>\");",
+									"",
+									"// Ensure we have an executionId",
+									"const execId = pm.collectionVariables.get(\"ExecutionId\");",
+									"pm.test(\"ExecutionId available\", function(){",
+									"  pm.expect(execId, \"Missing collection var ExecutionId\").to.be.a(\"string\").and.not.empty;",
+									"});",
+									"",
+									"// Poll counters and limits - READ FROM VARIABLES (not hardcoded)",
+									"const maxAttempts = parseInt(pm.environment.get(\"maxPollAttempts\") || pm.collectionVariables.get(\"maxPollAttempts\") || \"100\", 10);",
+									"const delayMs = parseInt(pm.environment.get(\"pollIntervalMs\") || pm.collectionVariables.get(\"pollIntervalMs\") || \"15000\", 10);",
+									"let attempt = parseInt(pm.collectionVariables.get(\"pollAttempt\") || \"0\", 10);",
+									"attempt += 1;",
+									"pm.collectionVariables.set(\"pollAttempt\", attempt);",
+									"console.log(`Attempt ${attempt}/${maxAttempts} (delay ${delayMs}ms)`);",
+									"",
+									"// Exceeded attempts",
+									"if (attempt > maxAttempts) {",
+									"  pm.test(\"Polling did not complete in time\", function(){",
+									"    pm.expect.fail(`Exceeded maxPollAttempts (${maxAttempts}). Last status: ${status}`);",
+									"  });",
+									"  postman.setNextRequest(null);",
+									"  return;",
+									"}",
+									"",
+									"// Control flow based on status",
+									"if (status === \"INPROGRESS\" || status === \"QUEUED\" || status === \"PENDING\") {",
+									"  pm.test(\"Still in progress\", function(){",
+									"    pm.expect([\"INPROGRESS\",\"QUEUED\",\"PENDING\"]).to.include(status);",
+									"  });",
+									"  setTimeout(function(){",
+									"    postman.setNextRequest(\"Check status\");",
+									"  }, delayMs);",
+									"  return;",
+									"}",
+									"",
+									"if (status === \"COMPLETED\" || status === \"SUCCESS\") {",
+									"  pm.collectionVariables.set(\"statusDesired\", \"Completed\");",
+									"  pm.test(\"Execution completed\", function(){",
+									"    pm.expect(status).to.be.oneOf([\"COMPLETED\",\"SUCCESS\"]);",
+									"  });",
+									"  // Do not setNextRequest; allow run order to continue",
+									"  return;",
+									"}",
+									"",
+									"// Terminal failure states",
+									"if ([\"FAILED\",\"ERROR\",\"ERRORED\",\"CANCELED\",\"CANCELLED\",\"TIMEOUT\"].includes(status)) {",
+									"  pm.test(\"Execution failed\", function(){",
+									"    pm.expect.fail(`Terminal status: ${status}`);",
+									"  });",
+									"  postman.setNextRequest(null);",
+									"  return;",
+									"}",
+									"",
+									"// Unknown status",
+									"pm.test(\"Unknown status encountered\", function(){",
+									"  pm.expect.fail(`Unknown status '${rawStatus}'`);",
+									"});",
+									"postman.setNextRequest(null);"
+								],
+								"type": "text/javascript",
+								"packages": {},
+								"requests": {}
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{AccessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Tricentis",
+								"value": "OK",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{ServerUrl}}/automationobjectservice/api/Execution/{{ExecutionId}}/status",
+							"host": [
+								"{{ServerUrl}}"
+							],
+							"path": [
+								"automationobjectservice",
+								"api",
+								"Execution",
+								"{{ExecutionId}}",
+								"status"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Post Execution",
+			"item": [
+				{
+					"name": "Get result",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{AccessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Tricentis",
+								"value": "OK",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{ServerUrl}}/automationobjectservice/api/Execution/{{ExecutionId}}/results",
+							"host": [
+								"{{ServerUrl}}"
+							],
+							"path": [
+								"automationobjectservice",
+								"api",
+								"Execution",
+								"{{ExecutionId}}",
+								"results"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get summary",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{AccessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-Tricentis",
+								"value": "OK",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{ServerUrl}}/automationobjectservice/api/Execution/{{ExecutionId}}/results/summary",
+							"host": [
+								"{{ServerUrl}}"
+							],
+							"path": [
+								"automationobjectservice",
+								"api",
+								"Execution",
+								"{{ExecutionId}}",
+								"results",
+								"summary"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "ClientId",
+			"value": ""
+		},
+		{
+			"key": "ClientSecret",
+			"value": ""
+		},
+		{
+			"key": "AccessToken",
+			"value": ""
+		},
+		{
+			"key": "ExecutionId",
+			"value": ""
+		},
+		{
+			"key": "pollAttempt",
+			"value": ""
+		},
+		{
+			"key": "statusDesired",
+			"value": ""
+		},
+		{
+			"key": "ServerUrl",
+			"value": ""
+		}
+	]
+}

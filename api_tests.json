@@ -1,0 +1,752 @@
+{
+  "info": {
+    "_postman_id": "b4d8d19b-6035-4006-906a-7e7b967dc956",
+    "name": "Heartbeat",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49230320",
+    "_collection_link": "https://go.postman.co/collection/49230320-b4d8d19b-6035-4006-906a-7e7b967dc956?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "CrossComponents_Heartbeat_TC003_API_SAP Ping test TS8",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://vhinots8ci.rise.apps.eon.com:44300/sap/public/ping",
+          "protocol": "https",
+          "host": [
+            "vhinots8ci",
+            "rise",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44300",
+          "path": [
+            "sap",
+            "public",
+            "ping"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC004_API_SAP Ping test QS8",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://vhinoqs8ci.rise.apps.eon.com:44300/sap/public/ping",
+          "protocol": "https",
+          "host": [
+            "vhinoqs8ci",
+            "rise",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44300",
+          "path": [
+            "sap",
+            "public",
+            "ping"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC005_API_SAP Ping test A04",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://a04.apps.eon.com:44341/sap/public/ping",
+          "protocol": "https",
+          "host": [
+            "a04",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44341",
+          "path": [
+            "sap",
+            "public",
+            "ping"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC006_API_SAP Ping test T04",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://t04.apps.eon.com:44381/sap/public/ping",
+          "protocol": "https",
+          "host": [
+            "t04",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44381",
+          "path": [
+            "sap",
+            "public",
+            "ping"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC007_API_SAP OData TS8 040",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "040",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://vhinots8ci.rise.apps.eon.com:44300/sap/opu/odata/sap/Z_ERP_ISU_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "vhinots8ci",
+            "rise",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44300",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_ERP_ISU_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC008_API_SAP OData TS8 050",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "sap-client",
+            "value": "050",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://vhinots8ci.rise.apps.eon.com:44300/sap/opu/odata/sap/Z_ERP_ISU_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "vhinots8ci",
+            "rise",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44300",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_ERP_ISU_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC009_API_SAP OData QS8 040",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "040",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://vhinoqs8ci.rise.apps.eon.com:44300/sap/opu/odata/sap/Z_ERP_ISU_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "vhinoqs8ci",
+            "rise",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44300",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_ERP_ISU_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC010_API_SAP OData QS8 050",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "050",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://vhinoqs8ci.rise.apps.eon.com:44300/sap/opu/odata/sap/Z_ERP_ISU_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "vhinoqs8ci",
+            "rise",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44300",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_ERP_ISU_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC011_API_SAP OData A04 040",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "040",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://a04.apps.eon.com:44341/sap/opu/odata/sap/Z_CRM_UTILITIES_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "a04",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44341",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_CRM_UTILITIES_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC012_API_SAP OData A04 050",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xhtml+xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "050",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://a04.apps.eon.com:44341/sap/opu/odata/sap/Z_CRM_UTILITIES_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "a04",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44341",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_CRM_UTILITIES_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC013_API_SAP OData T04 040",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "040",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://t04.apps.eon.com:44381/sap/opu/odata/sap/Z_CRM_UTILITIES_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "t04",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44381",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_CRM_UTILITIES_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "CrossComponents_Heartbeat_TC014_API_SAP OData A04 050",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "password",
+              "value": "{{SystemPassword}}",
+              "type": "string"
+            },
+            {
+              "key": "username",
+              "value": "{{SystemUsername}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/xml",
+            "type": "text"
+          },
+          {
+            "key": "sap-client",
+            "value": "050",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://t04.apps.eon.com:44381/sap/opu/odata/sap/Z_CRM_UTILITIES_UMC_SRV;v=3/$metadata",
+          "protocol": "https",
+          "host": [
+            "t04",
+            "apps",
+            "eon",
+            "com"
+          ],
+          "port": "44381",
+          "path": [
+            "sap",
+            "opu",
+            "odata",
+            "sap",
+            "Z_CRM_UTILITIES_UMC_SRV;v=3",
+            "$metadata"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "basic"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "SAP TS8 URL",
+      "value": ""
+    }
+  ]
+}
