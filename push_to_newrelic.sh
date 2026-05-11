@@ -143,20 +143,47 @@ try {
 }
 
 const events = [];
-const testcaseRegex = /<testcase([^>]*)\/?>|<testcase([^>]*)>([\s\S]*?)<\/testcase>/g;
-let match;
 
-while ((match = testcaseRegex.exec(xml)) !== null) {
-  const attrs = match[1] || match[2] || '';
-  const inner = match[3] || '';
+// BUG FIX: The previous regex used \/?> which makes the slash OPTIONAL.
+// This caused the first alternative to match non-self-closing <testcase ...> opening
+// tags, leaving inner='' → every testcase reported as Passed even when failed.
+//
+// FIX: Use an attribute-aware regex that captures quoted values correctly,
+// then determine self-closing from the tag terminator ("/> " vs ">").
+// For non-self-closing tags, extract inner content manually via indexOf to
+// avoid any further regex ambiguity.
+//
+// Regex breakdown:
+//   <testcase                        → literal opening
+//   ((?:\s+\w+="[^"]*")*)           → all attributes (name="..." log="..." etc.)
+//                                      "[^"]*" safely handles huge log values
+//   \s*(\/>|>)                       → captures "/>'" (self-closing) or ">" (with body)
+const attrRegex = /<testcase((?:\s+\w+="[^"]*")*)\s*(\/>|>)/g;
+let m;
 
+while ((m = attrRegex.exec(xml)) !== null) {
+  const attrs     = m[1];
+  const selfClose = m[2] === '/>';
   const nameMatch = attrs.match(/name="([^"]*)"/);
   if (!nameMatch) continue;
   const name = nameMatch[1];
 
-  const status = inner.includes('<failure') ? 'Failed' : 'Passed';
+  let inner = '';
+  if (!selfClose) {
+    // Manually extract content between opening tag and </testcase>
+    // This avoids any regex greediness/ambiguity issues
+    const startIdx = m.index + m[0].length;
+    const endIdx   = xml.indexOf('</testcase>', startIdx);
+    if (endIdx === -1) continue; // malformed XML, skip
+    inner = xml.substring(startIdx, endIdx);
+    // Advance regex past </testcase> so next iteration starts cleanly
+    attrRegex.lastIndex = endIdx + '</testcase>'.length;
+  }
 
-  // Extract failure message if present
+  const hasFailed = inner.includes('<failure');
+  const status    = hasFailed ? 'Failed' : 'Passed';
+
+  // Extract failure message when present
   const failMsgMatch = inner.match(/<failure[^>]*message="([^"]*)"/) ||
                        inner.match(/<failure[^>]*>([\s\S]*?)<\/failure>/);
   const failureDetail = failMsgMatch ? failMsgMatch[1].trim() : null;
