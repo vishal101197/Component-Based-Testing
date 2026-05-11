@@ -144,20 +144,14 @@ try {
 
 const events = [];
 
-// BUG FIX: The previous regex used \/?> which makes the slash OPTIONAL.
-// This caused the first alternative to match non-self-closing <testcase ...> opening
-// tags, leaving inner='' → every testcase reported as Passed even when failed.
+// TOSCA XML structure (JUnit format):
+//   Passed → self-closing:  <testcase name="..." log="..." />
+//   Failed → has body:      <testcase name="..." log="..."><failure>...</failure></testcase>
 //
-// FIX: Use an attribute-aware regex that captures quoted values correctly,
-// then determine self-closing from the tag terminator ("/> " vs ">").
-// For non-self-closing tags, extract inner content manually via indexOf to
-// avoid any further regex ambiguity.
+// Rule: self-closing = Passed. ANY body present = Failed.
+// Covers <failure>, <error>, <skipped> — whatever TOSCA emits.
 //
-// Regex breakdown:
-//   <testcase                        → literal opening
-//   ((?:\s+\w+="[^"]*")*)           → all attributes (name="..." log="..." etc.)
-//                                      "[^"]*" safely handles huge log values
-//   \s*(\/>|>)                       → captures "/>'" (self-closing) or ">" (with body)
+// Attr-aware regex: "[^"]*" safely swallows huge log attribute values.
 const attrRegex = /<testcase((?:\s+\w+="[^"]*")*)\s*(\/>|>)/g;
 let m;
 
@@ -170,23 +164,28 @@ while ((m = attrRegex.exec(xml)) !== null) {
 
   let inner = '';
   if (!selfClose) {
-    // Manually extract content between opening tag and </testcase>
-    // This avoids any regex greediness/ambiguity issues
     const startIdx = m.index + m[0].length;
     const endIdx   = xml.indexOf('</testcase>', startIdx);
-    if (endIdx === -1) continue; // malformed XML, skip
+    if (endIdx === -1) continue;
     inner = xml.substring(startIdx, endIdx);
-    // Advance regex past </testcase> so next iteration starts cleanly
     attrRegex.lastIndex = endIdx + '</testcase>'.length;
   }
 
-  const hasFailed = inner.includes('<failure');
-  const status    = hasFailed ? 'Failed' : 'Passed';
+  // self-closing = Passed | any body present = Failed
+  const status = selfClose ? 'Passed' : 'Failed';
 
-  // Extract failure message when present
-  const failMsgMatch = inner.match(/<failure[^>]*message="([^"]*)"/) ||
-                       inner.match(/<failure[^>]*>([\s\S]*?)<\/failure>/);
-  const failureDetail = failMsgMatch ? failMsgMatch[1].trim() : null;
+  // Failure detail: extract first 3 "- Failed" step lines from body.
+  // Skips generic message="Test failure" attr — it's always the same useless string.
+  let failureDetail = null;
+  if (!selfClose) {
+    const failedLines = inner
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(l => l.startsWith('- Failed'))
+      .slice(0, 3)
+      .join(' | ');
+    if (failedLines) failureDetail = failedLines.substring(0, 500);
+  }
 
   const event = {
     eventType:    'ComponentBasedTestingResults',
